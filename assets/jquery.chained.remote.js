@@ -1,7 +1,7 @@
 /*
  * Chained - jQuery / Zepto chained selects plugin
  *
- * Copyright (c) 2010-2013 Mika Tuupola
+ * Copyright (c) 2010-2014 Mika Tuupola
  *
  * Licensed under the MIT license:
  *   http://www.opensource.org/licenses/mit-license.php
@@ -9,37 +9,38 @@
  * Project home:
  *   http://www.appelsiini.net/projects/chained
  *
- * Version: 0.9.9
+ * Version: 0.9.10
  *
  */
 
-;(function($, undefined) {
+;(function($, window, document, undefined) {
     "use strict";
 
-    $.fn.remoteChained = function (parents, url, options) {
+    $.fn.remoteChained = function(parents, url, options) {
 
         var settings;
         /* New style syntax. */
         if ("object" === typeof(parents) && "undefined" !== typeof(parents.url)) {
             settings = $.extend({}, $.fn.remoteChained.defaults, parents);
-            /* Still support old style syntax. */
+        /* Still support old style syntax. */
         } else {
             settings = $.extend({}, $.fn.remoteChained.defaults, options);
             settings.parents = parents;
             settings.url = url;
         }
 
-        return this.each(function () {
+        return this.each(function() {
 
             /* Save this to self because this changes when scope changes. */
             var self = this;
+            var request = false; /* Track xhr requests. */
 
-            $(settings.parents).each(function () {
-                $(this).bind("change", function () {
+            $(settings.parents).each(function() {
+                $(this).bind("change", function() {
 
                     /* Build data array from parents values. */
                     var data = {};
-                    $(settings.parents).each(function () {
+                    $(settings.parents).each(function() {
                         var id = settings.var_name ? settings.var_name : $(this).attr(settings.attribute);
                         var value = ($(this).is("select") ? $(":selected", this) : $(this)).val();
 
@@ -50,7 +51,7 @@
 
                         /* Optionally also depend on values from these inputs. */
                         if (settings.depends) {
-                            $(settings.depends).each(function () {
+                            $(settings.depends).each(function() {
                                 /* Do not include own value. */
                                 if (self !== $(this)) {
                                     var id = settings.var_name ? settings.var_name : $(this).attr(settings.attribute);
@@ -60,6 +61,12 @@
                         }
                     });
 
+                    /* If previous request running, abort it. */
+                    /* TODO: Probably should use Sinon to test this. */
+                    if (request && $.isFunction(request.abort)) {
+                        request.abort();
+                        request = false;
+                    }
                     if (settings.clear_children) {
                         /* Clear the select. */
                         $("option", self).remove();
@@ -76,7 +83,7 @@
                             build.call(self, settings.loading);
                         }
 
-                        $.getJSON(settings.url, data, function (json) {
+                        request = $.getJSON(settings.url, data, function (json) {
                             build.call(self, json);
                             /* Force updating the children. */
                             $(self).trigger("change");
@@ -84,11 +91,11 @@
                     }
                 });
 
-                /* If we have bootstrapbootstrapped data given in options. */
+                /* If we have bootstrapped data given in options. */
                 if (settings.bootstrap) {
-                    build.call(self, settings.bootstrap);
-                    settings.bootstrap = null;
-                }
+                     build.call(self, settings.bootstrap);
+                     settings.bootstrap = null;
+                 }
             });
 
             /* Build the select from given data. */
@@ -115,7 +122,7 @@
                 }
 
                 /* Add new options from json. */
-                for (var i = 0; i !== option_list.length; i++) {
+                for (var i=0; i!==option_list.length; i++) {
                     var key = option_list[i][0];
                     var value = option_list[i][1];
 
@@ -124,12 +131,12 @@
                         selected_key = value;
                         continue;
                     }
-                    var option = $("<option></option>").val(key).append(value);
+                    var option = $("<option />").val(key).append(value);
                     $(self).append(option);
                 }
 
                 /* Loop option again to set selected. IE needed this... */
-                $(self).children().each(function () {
+                $(self).children().each(function() {
                     if ($(this).val() === selected_key) {
                         $(this).attr("selected", "selected");
                     }
@@ -137,9 +144,9 @@
 
                 /* If we have only the default value disable select. */
                 if (1 === $("option", self).size() && $(self).val() === "") {
-                    $(self).attr("disabled", "disabled");
+                    $(self).prop("disabled", true);
                 } else {
-                    $(self).removeAttr("disabled");
+                    $(self).prop("disabled", false);
                 }
             }
         });
@@ -151,12 +158,12 @@
     /* Default settings for plugin. */
     $.fn.remoteChained.defaults = {
         attribute: "name",
-        var_name: null,
-        depends: null,
-        bootstrap: null,
-        avoid_empty_request: null,
-        clear_children: null,
-        loading: null
+        var_name : null,
+        depends : null,
+        bootstrap : null,
+        avoid_empty_request : null,
+        clear_children : null,
+        loading : null
     };
 
 })(window.jQuery || window.Zepto, window, document);
